@@ -3,10 +3,24 @@ resource "null_resource" "argocd_add_cluster" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      argocd cluster add ${module.eks.cluster_arn} \
-        --aws-cluster-name ${module.eks.cluster_arn} \
-        --name in-cluster \
-        --project default
+      aws eks update-kubeconfig \
+        --name ${local.cluster_name} \
+        --region ${local.region} \
+        --profile jj
+      
+      kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${local.cluster_name}-cluster
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+stringData:
+  name: ${local.cluster_name}
+  server: ${module.eks.cluster_arn}
+  project: default
+EOF
     EOT
   }
 }

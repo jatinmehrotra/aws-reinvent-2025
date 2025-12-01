@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: eks-capability
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jatinmehrotra/aws-reinvent-2025
+    targetRevision: HEAD
+    path: eks-capabilities/ack_yaml
+  destination:
+    name: in-cluster
+    namespace: ack
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
