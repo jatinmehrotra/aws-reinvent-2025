@@ -10,7 +10,7 @@ spec:
     targetRevision: HEAD
     path: eks-capabilities/ack_yaml
   destination:
-    name: in-cluster
+    name: reinvent-2025
     namespace: ack
   syncPolicy:
     automated:
