@@ -27,7 +27,7 @@ resource "null_resource" "eks_capability_ack" {
         --type ACK \
         --role-arn ${aws_iam_role.eks_capability_role.arn} \
         --delete-propagation-policy RETAIN \
-        --profile jj
+       
     EOT
   }
 }
@@ -43,7 +43,7 @@ resource "null_resource" "wait_for_ack" {
         --capability-name my-ack \
         --query 'capability.status' \
         --output text \
-        --profile jj)" != "ACTIVE" ]; do
+       )" != "ACTIVE" ]; do
         echo "Waiting for ACK capability to become ACTIVE..."
         sleep 10
       done
@@ -79,7 +79,7 @@ resource "null_resource" "eks_capability_argocd" {
             }]
           }
         }' \
-        --profile jj
+       
     EOT
   }
 }
@@ -95,7 +95,7 @@ resource "null_resource" "wait_for_argocd" {
         --capability-name my-argocd \
         --query 'capability.status' \
         --output text \
-        --profile jj)" != "ACTIVE" ]; do
+       )" != "ACTIVE" ]; do
         echo "Waiting for ArgoCD capability to become ACTIVE..."
         sleep 10
       done

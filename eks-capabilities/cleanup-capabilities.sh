@@ -3,21 +3,20 @@
 
 CLUSTER_NAME="reinvent-2025"
 REGION="us-east-1"
-PROFILE="jj"
 
 echo "Deleting ArgoCD capability..."
 aws eks delete-capability \
   --region $REGION \
   --cluster-name $CLUSTER_NAME \
   --capability-name my-argocd \
-  --profile $PROFILE 2>/dev/null || echo "ArgoCD capability already deleted or doesn't exist"
+  2>/dev/null || echo "ArgoCD capability already deleted or doesn't exist"
 
 echo "Deleting ACK capability..."
 aws eks delete-capability \
   --region $REGION \
   --cluster-name $CLUSTER_NAME \
   --capability-name my-ack \
-  --profile $PROFILE 2>/dev/null || echo "ACK capability already deleted or doesn't exist"
+  2>/dev/null || echo "ACK capability already deleted or doesn't exist"
 
 echo ""
 echo "Waiting for capabilities to be fully deleted..."
@@ -28,7 +27,6 @@ while true; do
     --region $REGION \
     --cluster-name $CLUSTER_NAME \
     --capability-name my-argocd \
-    --profile $PROFILE \
     --query 'capability.status' \
     --output text 2>/dev/null)
   
@@ -46,7 +44,6 @@ while true; do
     --region $REGION \
     --cluster-name $CLUSTER_NAME \
     --capability-name my-ack \
-    --profile $PROFILE \
     --query 'capability.status' \
     --output text 2>/dev/null)
   
