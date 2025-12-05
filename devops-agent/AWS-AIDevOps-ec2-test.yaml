@@ -1,0 +1,145 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS AIDevOps EC2 CPU Test Stack'
+
+Parameters:
+  MyIP:
+    Type: String
+    Description: Your current IP address for SSH access (find at https://whatismyipaddress.com)
+    Default: '0.0.0.0/0'
+
+Resources:
+  # Security Group for SSH access
+  TestSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: AWS-AIDevOps-test-sg
+      GroupDescription: AWS AIDevOps beta testing security group
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref MyIP
+          Description: SSH access from your IP
+      Tags:
+        - Key: Name
+          Value: AWS-AIDevOps-Test-SG
+        - Key: Purpose
+          Value: AWS-AIDevOps-Testing
+
+  # Key Pair for SSH access
+  TestKeyPair:
+    Type: AWS::EC2::KeyPair
+    Properties:
+      KeyName: AWS-AIDevOps-test-key
+      KeyType: rsa
+      Tags:
+        - Key: Name
+          Value: AWS-AIDevOps-Test-Key
+        - Key: Purpose
+          Value: AWS-AIDevOps-Testing
+
+  # EC2 Instance for CPU testing
+  TestInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t3.micro
+      ImageId: '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64}}'
+      KeyName: !Ref TestKeyPair
+      SecurityGroupIds:
+        - !Ref TestSecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          yum install -y htop
+          
+          # Create the CPU stress test script
+          cat > /home/ec2-user/cpu-stress-test.sh << 'EOF'
+          #!/bin/bash
+          echo "Starting AWS AIDevOps CPU Stress Test"
+          echo "Time: $(date)"
+          echo "Instance: $(curl -s http://169.254.169.254/latest/meta-data/instance-id)"
+          echo ""
+          
+          # Get number of CPU cores
+          CORES=$(nproc)
+          echo "CPU Cores: $CORES"
+          echo ""
+          
+          echo "Starting stress test (5 minutes)..."
+          echo "This will generate >70% CPU usage to trigger CloudWatch alarm"
+          echo ""
+          
+          # Create CPU load using yes command
+          echo "Starting CPU load processes..."
+          for i in $(seq 1 $CORES); do
+              (yes > /dev/null) &
+              CPU_PID=$!
+              echo "Started CPU load process $i (PID: $CPU_PID)"
+              echo $CPU_PID >> /tmp/cpu_test_pids
+          done
+          
+          # Auto-cleanup after 5 minutes
+          (sleep 300 && echo "Stopping CPU load processes..." && kill $(cat /tmp/cpu_test_pids 2>/dev/null) 2>/dev/null && rm -f /tmp/cpu_test_pids) &
+          
+          echo ""
+          echo "CPU load processes started for 5 minutes"
+          echo "Check CloudWatch for alarm trigger in 3-5 minutes"
+          EOF
+          
+          chmod +x /home/ec2-user/cpu-stress-test.sh
+          chown ec2-user:ec2-user /home/ec2-user/cpu-stress-test.sh
+          
+          # Create auto-shutdown script (safety mechanism)
+          cat > /home/ec2-user/auto-shutdown.sh << 'SHUTDOWN_EOF'
+          #!/bin/bash
+          echo "Auto-shutdown scheduled for 2 hours from now: $(date)"
+          sleep 7200
+          echo "Auto-shutdown executing at: $(date)"
+          sudo shutdown -h now
+          SHUTDOWN_EOF
+          
+          chmod +x /home/ec2-user/auto-shutdown.sh
+          nohup /home/ec2-user/auto-shutdown.sh > /home/ec2-user/auto-shutdown.log 2>&1 &
+          
+          echo "AWS AIDevOps test setup completed at $(date)" > /home/ec2-user/setup-complete.txt
+      Tags:
+        - Key: Name
+          Value: AWS-AIDevOps-Test-Instance
+        - Key: Purpose
+          Value: AWS-AIDevOps-Testing
+
+  # CloudWatch Alarm for CPU utilization
+  CPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: AWS-AIDevOps-EC2-CPU-Test
+      AlarmDescription: AWS-AIDevOps beta test - EC2 CPU utilization alarm
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 70
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref TestInstance
+      TreatMissingData: notBreaching
+
+Outputs:
+  InstanceId:
+    Description: EC2 Instance ID for testing
+    Value: !Ref TestInstance
+  
+  SecurityGroupId:
+    Description: Security Group ID
+    Value: !Ref TestSecurityGroup
+    
+  AlarmName:
+    Description: CloudWatch Alarm Name
+    Value: !Ref CPUAlarm
+    
+  SSHCommand:
+    Description: SSH command to connect to instance
+    Value: !Sub 'ssh -i "AWS-AIDevOps-test-key.pem" ec2-user@${TestInstance.PublicDnsName}'
