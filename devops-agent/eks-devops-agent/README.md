@@ -2,10 +2,12 @@
 
 ## Setup
 
-1. Replace the IAM role ARN in `terraform.tfvars`:
+1. Create `terraform.tfvars` file:
    ```
-   devops_agent_role_arn = "arn:aws:iam::<account-id>:role/service-role/DevOpsAgentRole-AgentSpace-<id>"
+   devops_agent_role_arn = "<replace with your agent space IAM role arn>"
    ```
+
+2. Replace with your actual IAM role ARN (format: `arn:aws:iam::<account-id>:role/service-role/DevOpsAgentRole-AgentSpace-<id>`)
 
 ## Deploy
 
